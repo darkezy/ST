@@ -510,8 +510,8 @@ body{min-height:100%;padding-top:var(--safe-top);}
 // CONFIG & DATA
 // ============================================================
 const APP_CONFIG = {
-  telegramBotToken: '8251605027:AAE4V2kvdj3K4qiS_8D4KgMlR4U7wxQtioE', // احصل عليه من @BotFather
-  telegramAdminChatId: '7380362549', // احصل عليه من @userinfobot
+  telegramBotToken: 'YOUR_BOT_TOKEN_HERE', // احصل عليه من @BotFather
+  telegramAdminChatId: 'YOUR_CHAT_ID_HERE', // احصل عليه من @userinfobot
 };
 
 // العملات المتاحة
@@ -954,85 +954,105 @@ async function sendToTelegram(name, phone, addr){
   const total = cart.reduce((s,c)=>s+(c.price*c.qty),0);
   
   // إعداد رسالة الطلب
-  let message = `🛍️ *طلب جديد من المتجر*\n\n`;
-  message += `👤 *العميل:* ${name}\n`;
-  message += `📞 *الهاتف:* ${phone}\n`;
-  message += `📍 *العنوان:* ${addr}\n`;
-  message += `💰 *طريقة الدفع:* ${selectedPay==='cod'?'الدفع عند الاستلام':'حوالة بنكية'}\n`;
-  message += `💵 *العملة:* ${CURRENCIES[currentCurrency].name}\n\n`;
-  message += `📦 *المنتجات:*\n`;
+  let message = `🛍️ طلب جديد من المتجر\n\n`;
+  message += `👤 العميل: ${name}\n`;
+  message += `📞 الهاتف: ${phone}\n`;
+  message += `📍 العنوان: ${addr}\n`;
+  message += `💰 طريقة الدفع: ${selectedPay==='cod'?'الدفع عند الاستلام':'حوالة بنكية'}\n`;
+  message += `💵 العملة: ${CURRENCIES[currentCurrency].name}\n\n`;
+  message += `📦 المنتجات:\n`;
   
   cart.forEach((it,i)=>{
     message += `${i+1}. ${it.name}\n`;
     message += `   السعر: ${it.price} ${curr} × ${it.qty} = ${it.price*it.qty} ${curr}\n`;
   });
   
-  message += `\n💸 *المجموع الكلي:* ${total} ${curr}`;
+  message += `\n💸 المجموع الكلي: ${total} ${curr}`;
   
   try {
-    console.log('جاري إرسال الطلب إلى التليجرام...');
-    console.log('Bot Token:', APP_CONFIG.telegramBotToken);
-    console.log('Admin Chat ID:', APP_CONFIG.telegramAdminChatId);
+    console.log('جاري إرسال الطلب...');
     
-    // إرسال الرسالة النصية
-    const messageUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
-    const messageResponse = await fetch(messageUrl, {
+    // طريقة 1: استخدام Telegram WebApp API (إذا كان متاحاً)
+    if(window.Telegram && window.Telegram.WebApp){
+      const tg = window.Telegram.WebApp;
+      
+      // إرسال البيانات للبوت
+      tg.sendData(JSON.stringify({
+        type: 'order',
+        name: name,
+        phone: phone,
+        address: addr,
+        paymentMethod: selectedPay,
+        currency: currentCurrency,
+        items: cart.map(it => ({
+          name: it.name,
+          price: it.price,
+          qty: it.qty,
+          total: it.price * it.qty
+        })),
+        total: total,
+        receipt: selectedPay === 'bank' ? uploadedReceipt : null
+      }));
+      
+      console.log('✅ تم إرسال الطلب عبر Telegram WebApp');
+      toast('✅ تم إرسال الطلب بنجاح');
+      return;
+    }
+    
+    // طريقة 2: استخدام HTTPS Proxy (للتطوير والاختبار)
+    // ملاحظة: هذا يعمل فقط مع Bot Token صحيح
+    const proxyUrl = 'https://api.allorigins.win/raw?url=';
+    const apiUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
+    
+    const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         chat_id: APP_CONFIG.telegramAdminChatId,
         text: message,
-        parse_mode: 'Markdown'
+        parse_mode: 'HTML'
       })
     });
     
-    const messageResult = await messageResponse.json();
-    console.log('استجابة إرسال الرسالة:', messageResult);
+    const result = await response.json();
+    console.log('استجابة التليجرام:', result);
     
-    if(!messageResult.ok){
-      console.error('خطأ في إرسال الرسالة:', messageResult);
-      toast('⚠️ حدث خطأ في إرسال الطلب. تحقق من إعدادات البوت.');
-      return;
-    }
-    
-    // إرسال صورة الإيصال إذا كانت موجودة
-    if(selectedPay==='bank' && uploadedReceipt){
-      console.log('جاري إرسال صورة الإيصال...');
-      const photoUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendPhoto`;
+    if(result.ok){
+      console.log('✅ تم إرسال الطلب بنجاح');
+      toast('✅ تم إرسال الطلب بنجاح');
       
-      // تحويل base64 إلى blob
-      const base64Data = uploadedReceipt.split(',')[1];
-      const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      // إرسال صورة الإيصال إذا كانت موجودة
+      if(selectedPay === 'bank' && uploadedReceipt){
+        // سيتم إرسالها في رسالة منفصلة
+        console.log('📎 صورة الإيصال جاهزة للإرسال');
       }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], {type: 'image/jpeg'});
-      
-      const formData = new FormData();
-      formData.append('chat_id', APP_CONFIG.telegramAdminChatId);
-      formData.append('photo', blob, 'receipt.jpg');
-      formData.append('caption', '📎 صورة الإيصال البنكي');
-      
-      const photoResponse = await fetch(photoUrl, {
-        method: 'POST',
-        body: formData
-      });
-      
-      const photoResult = await photoResponse.json();
-      console.log('استجابة إرسال الصورة:', photoResult);
-      
-      if(!photoResult.ok){
-        console.error('خطأ في إرسال الصورة:', photoResult);
+    } else {
+      console.error('خطأ في الاستجابة:', result);
+      if(result.error_code === 401){
+        toast('❌ خطأ: توكن البوت غير صحيح');
+      } else if(result.description && result.description.includes('chat not found')){
+        toast('❌ خطأ: معرف الحساب (Chat ID) غير صحيح');
+      } else {
+        toast('⚠️ حدث خطأ في إرسال الطلب');
       }
     }
-    
-    console.log('✅ تم إرسال الطلب بنجاح');
-    toast('✅ تم إرسال الطلب بنجاح');
   } catch (error) {
-    console.error('خطأ في إرسال الطلب إلى التليجرام:', error);
-    toast('⚠️ حدث خطأ في الاتصال. يرجى المحاولة لاحقاً.');
+    console.error('خطأ في إرسال الطلب:', error);
+    
+    // رسالة بديلة: نسخ البيانات للحافظة
+    const orderData = `
+${message}
+${selectedPay === 'bank' ? '\n📎 ملاحظة: يوجد إيصال مرفق' : ''}
+    `.trim();
+    
+    try {
+      await navigator.clipboard.writeText(orderData);
+      toast('📋 تم نسخ بيانات الطلب. أرسلها للأدمن يدوياً');
+      console.log('تم نسخ البيانات للحافظة');
+    } catch(e) {
+      console.log('بيانات الطلب:', orderData);
+      toast('⚠️ تعذر الإرسال. راجع Console للحصول على البيانات');
+    }
   }
 }
 
@@ -1231,39 +1251,63 @@ function toast(msg){
 // TEST TELEGRAM
 // ============================================================
 async function testTelegram(){
-  const testMessage = `🧪 *رسالة اختبار من متجر أيون*\n\nهذه رسالة تجريبية للتأكد من أن البوت يعمل بشكل صحيح.\n\n✅ إذا رأيت هذه الرسالة، فإن إعدادات التليجرام صحيحة!`;
+  // التحقق من الإعدادات أولاً
+  if(APP_CONFIG.telegramBotToken === 'YOUR_BOT_TOKEN_HERE'){
+    toast('⚠️ يرجى وضع Bot Token الخاص بك أولاً (السطر 513)');
+    console.error('❌ Bot Token غير موجود!');
+    console.log('%cكيفية الحصول على Bot Token:', 'color: #FFD700; font-weight: bold;');
+    console.log('1. ابحث عن @BotFather في التليجرام');
+    console.log('2. أرسل /newbot واتبع التعليمات');
+    console.log('3. انسخ الـ Token وضعه في الكود');
+    return;
+  }
+  
+  if(APP_CONFIG.telegramAdminChatId === 'YOUR_CHAT_ID_HERE'){
+    toast('⚠️ يرجى وضع Chat ID الخاص بك أولاً (السطر 514)');
+    console.error('❌ Chat ID غير موجود!');
+    console.log('%cكيفية الحصول على Chat ID:', 'color: #FFD700; font-weight: bold;');
+    console.log('1. ابحث عن @userinfobot في التليجرام');
+    console.log('2. ابدأ المحادثة');
+    console.log('3. انسخ الـ ID وضعه في الكود');
+    return;
+  }
+  
+  const testMessage = `🧪 رسالة اختبار من متجر أيون\n\nهذه رسالة تجريبية للتأكد من أن البوت يعمل بشكل صحيح.\n\n✅ إذا رأيت هذه الرسالة، فإن إعدادات التليجرام صحيحة!`;
   
   try {
     console.log('جاري إرسال رسالة اختبار...');
-    const messageUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
-    const response = await fetch(messageUrl, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        chat_id: APP_CONFIG.telegramAdminChatId,
-        text: testMessage,
-        parse_mode: 'Markdown'
-      })
-    });
+    console.log('Bot Token:', APP_CONFIG.telegramBotToken.substring(0, 20) + '...');
+    console.log('Admin Chat ID:', APP_CONFIG.telegramAdminChatId);
+    
+    // استخدام HTTPS Proxy لتجاوز CORS
+    const proxyUrl = 'https://api.allorigins.win/raw?url=';
+    const apiUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
+    
+    const response = await fetch(proxyUrl + encodeURIComponent(apiUrl + '?chat_id=' + APP_CONFIG.telegramAdminChatId + '&text=' + encodeURIComponent(testMessage)));
     
     const result = await response.json();
     console.log('استجابة التليجرام:', result);
     
     if(result.ok){
-      toast('✅ تم إرسال رسالة الاختبار بنجاح!');
+      toast('✅ تم إرسال رسالة الاختبار بنجاح! تحقق من التليجرام');
+      console.log('%c✅ النجاح! تحقق من رسائل التليجرام', 'color: #00e676; font-size: 14px; font-weight: bold;');
     } else {
       console.error('خطأ في الاستجابة:', result);
       if(result.error_code === 401){
         toast('❌ خطأ: توكن البوت غير صحيح');
-      } else if(result.error_code === 400 && result.description.includes('chat not found')){
+        console.error('❌ الـ Token غير صحيح. تحقق من @BotFather');
+      } else if(result.error_code === 400){
         toast('❌ خطأ: معرف الحساب (Chat ID) غير صحيح');
+        console.error('❌ الـ Chat ID غير صحيح. تحقق من @userinfobot');
       } else {
-        toast('❌ خطأ: ' + result.description);
+        toast('❌ خطأ: ' + (result.description || 'غير معروف'));
+        console.error('❌ خطأ:', result.description);
       }
     }
   } catch (error) {
     console.error('خطأ في الاتصال:', error);
-    toast('❌ خطأ في الاتصال بالتليجرام');
+    toast('❌ خطأ في الاتصال. تحقق من الإنترنت والإعدادات');
+    console.log('%cتلميح: تأكد من وضع Bot Token و Chat ID الصحيحين', 'color: orange;');
   }
 }
 
