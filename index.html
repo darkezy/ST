@@ -148,11 +148,9 @@ body{min-height:100%;padding-top:var(--safe-top);}
 .det-img{position:relative;aspect-ratio:16/9;background:linear-gradient(135deg,#1e1e35,#252545);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
 .det-img-scroll{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .det-img-scroll::-webkit-scrollbar{display:none;}
-.det-img-slide{min-width:100%;height:100%;scroll-snap-align:start;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e1e35,#252545);}
+.det-img-slide{min-width:100%;height:100%;scroll-snap-align:start;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .det-img-slide img{width:100%;height:100%;object-fit:cover;}
 .det-img-slide .ic{font-size:64px;}
-.det-img .ic{font-size:64px;}
-.det-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .det-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(15,15,26,.7);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;}
 .det-close svg{width:17px;height:17px;stroke:var(--text);fill:none;stroke-width:2.5;}
 .img-nav{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:10;}
@@ -338,6 +336,9 @@ body{min-height:100%;padding-top:var(--safe-top);}
   <div class="admin-stats" id="adminStats"></div>
   <div class="admin-actions">
     <button class="admin-btn primary" onclick="openProdModal(null)"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> منتج جديد</button>
+    <button class="admin-btn secondary" onclick="testTelegram()" style="flex:none;">
+      📱 اختبار التليجرام
+    </button>
     <div class="currency-selector" style="position:relative;">
       <button class="admin-btn secondary" onclick="toggleCurrencyMenu()" style="flex:none;min-width:140px;">
         💱 <span id="currencyDisplay">ريال سعودي</span>
@@ -509,8 +510,8 @@ body{min-height:100%;padding-top:var(--safe-top);}
 // CONFIG & DATA
 // ============================================================
 const APP_CONFIG = {
-  telegramBotToken:8251605027:AAE4V2kvdj3K4qiS_8D4KgMlR4U7wxQtioE, // ضع توكن البوت هنا
-  telegramAdminChatId:7380362549, // ضع معرف حساب الادمن هنا
+  telegramBotToken: 'YOUR_BOT_TOKEN_HERE', // احصل عليه من @BotFather
+  telegramAdminChatId: 'YOUR_CHAT_ID_HERE', // احصل عليه من @userinfobot
 };
 
 // العملات المتاحة
@@ -800,16 +801,20 @@ function updateDetailDisplay(p){
   const scrollContainer = document.getElementById('detImgScroll');
   const imgNav = document.getElementById('imgNav');
   
+  // إعادة تعيين الاسكرول
+  scrollContainer.scrollLeft = 0;
+  currentViewImgIndex = 0;
+  
   // عرض الصور مع الاسكرول
   if(p.imgs && p.imgs.length > 0){
     scrollContainer.innerHTML = p.imgs.map((img, i) => 
-      `<div class="det-img-slide"><img src="${img}" alt="${p.name}"/></div>`
+      `<div class="det-img-slide" style="background:linear-gradient(135deg,#1e1e35,#252545);"><img src="${img}" alt="${p.name}" style="display:block;width:100%;height:100%;object-fit:cover;"/></div>`
     ).join('');
     
     // Navigation dots
     if(p.imgs.length > 1){
       imgNav.innerHTML = p.imgs.map((img, i) =>
-        `<div class="img-dot ${i === currentViewImgIndex ? 'active' : ''}" onclick="scrollToImage(${i})"></div>`
+        `<div class="img-dot ${i === 0 ? 'active' : ''}" onclick="scrollToImage(${i})"></div>`
       ).join('');
       imgNav.style.display = 'flex';
       
@@ -818,7 +823,7 @@ function updateDetailDisplay(p){
         const scrollLeft = scrollContainer.scrollLeft;
         const slideWidth = scrollContainer.offsetWidth;
         const newIndex = Math.round(scrollLeft / slideWidth);
-        if(newIndex !== currentViewImgIndex){
+        if(newIndex !== currentViewImgIndex && newIndex >= 0 && newIndex < p.imgs.length){
           currentViewImgIndex = newIndex;
           document.querySelectorAll('.img-dot').forEach((dot, i) => {
             dot.classList.toggle('active', i === newIndex);
@@ -965,9 +970,13 @@ async function sendToTelegram(name, phone, addr){
   message += `\n💸 *المجموع الكلي:* ${total} ${curr}`;
   
   try {
+    console.log('جاري إرسال الطلب إلى التليجرام...');
+    console.log('Bot Token:', APP_CONFIG.telegramBotToken);
+    console.log('Admin Chat ID:', APP_CONFIG.telegramAdminChatId);
+    
     // إرسال الرسالة النصية
     const messageUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
-    await fetch(messageUrl, {
+    const messageResponse = await fetch(messageUrl, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -977,8 +986,18 @@ async function sendToTelegram(name, phone, addr){
       })
     });
     
+    const messageResult = await messageResponse.json();
+    console.log('استجابة إرسال الرسالة:', messageResult);
+    
+    if(!messageResult.ok){
+      console.error('خطأ في إرسال الرسالة:', messageResult);
+      toast('⚠️ حدث خطأ في إرسال الطلب. تحقق من إعدادات البوت.');
+      return;
+    }
+    
     // إرسال صورة الإيصال إذا كانت موجودة
     if(selectedPay==='bank' && uploadedReceipt){
+      console.log('جاري إرسال صورة الإيصال...');
       const photoUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendPhoto`;
       
       // تحويل base64 إلى blob
@@ -996,16 +1015,24 @@ async function sendToTelegram(name, phone, addr){
       formData.append('photo', blob, 'receipt.jpg');
       formData.append('caption', '📎 صورة الإيصال البنكي');
       
-      await fetch(photoUrl, {
+      const photoResponse = await fetch(photoUrl, {
         method: 'POST',
         body: formData
       });
+      
+      const photoResult = await photoResponse.json();
+      console.log('استجابة إرسال الصورة:', photoResult);
+      
+      if(!photoResult.ok){
+        console.error('خطأ في إرسال الصورة:', photoResult);
+      }
     }
     
-    console.log('تم إرسال الطلب إلى التليجرام بنجاح');
+    console.log('✅ تم إرسال الطلب بنجاح');
+    toast('✅ تم إرسال الطلب بنجاح');
   } catch (error) {
-    console.error('خطأ في إرسال الطلب:', error);
-    // يمكن إضافة toast للمستخدم هنا
+    console.error('خطأ في إرسال الطلب إلى التليجرام:', error);
+    toast('⚠️ حدث خطأ في الاتصال. يرجى المحاولة لاحقاً.');
   }
 }
 
@@ -1201,6 +1228,46 @@ function toast(msg){
 }
 
 // ============================================================
+// TEST TELEGRAM
+// ============================================================
+async function testTelegram(){
+  const testMessage = `🧪 *رسالة اختبار من متجر أيون*\n\nهذه رسالة تجريبية للتأكد من أن البوت يعمل بشكل صحيح.\n\n✅ إذا رأيت هذه الرسالة، فإن إعدادات التليجرام صحيحة!`;
+  
+  try {
+    console.log('جاري إرسال رسالة اختبار...');
+    const messageUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
+    const response = await fetch(messageUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        chat_id: APP_CONFIG.telegramAdminChatId,
+        text: testMessage,
+        parse_mode: 'Markdown'
+      })
+    });
+    
+    const result = await response.json();
+    console.log('استجابة التليجرام:', result);
+    
+    if(result.ok){
+      toast('✅ تم إرسال رسالة الاختبار بنجاح!');
+    } else {
+      console.error('خطأ في الاستجابة:', result);
+      if(result.error_code === 401){
+        toast('❌ خطأ: توكن البوت غير صحيح');
+      } else if(result.error_code === 400 && result.description.includes('chat not found')){
+        toast('❌ خطأ: معرف الحساب (Chat ID) غير صحيح');
+      } else {
+        toast('❌ خطأ: ' + result.description);
+      }
+    }
+  } catch (error) {
+    console.error('خطأ في الاتصال:', error);
+    toast('❌ خطأ في الاتصال بالتليجرام');
+  }
+}
+
+// ============================================================
 // TELEGRAM WEBAPP
 // ============================================================
 (function(){
@@ -1221,6 +1288,21 @@ function toast(msg){
 
 // ============================================================
 init();
+
+// رسالة تعليمية للمطور
+console.log('%c📱 متجر أيون - Telegram Mini App', 'color: #40E0D0; font-size: 18px; font-weight: bold;');
+console.log('%c⚙️ إعدادات التليجرام:', 'color: #20B2AA; font-size: 14px; font-weight: bold;');
+console.log('Bot Token:', APP_CONFIG.telegramBotToken);
+console.log('Admin Chat ID:', APP_CONFIG.telegramAdminChatId);
+console.log('%cللحصول على Bot Token:', 'color: #FFD700; font-weight: bold;');
+console.log('1. تحدث مع @BotFather في التليجرام');
+console.log('2. أرسل /newbot واتبع التعليمات');
+console.log('3. انسخ الـ Token وضعه في السطر 510');
+console.log('%cللحصول على Chat ID:', 'color: #FFD700; font-weight: bold;');
+console.log('1. تحدث مع @userinfobot في التليجرام');
+console.log('2. سيرسل لك معرفك (Chat ID)');
+console.log('3. انسخه وضعه في السطر 511');
+console.log('%c' + '─'.repeat(50), 'color: #40E0D0;');
 </script>
 </body>
 </html>
