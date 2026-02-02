@@ -1078,15 +1078,19 @@ async function sendToTelegram(name, phone, addr){
     if(result && result.ok){
       console.log('✅ تم إرسال الطلب النصي بنجاح');
       
-      // محاولة إرسال الصورة إذا كانت موجودة
+      // إرسال صورة الإيصال إذا كانت موجودة
       if(selectedPay === 'bank' && uploadedReceipt){
-        console.log('📎 ملاحظة: يوجد إيصال بنكي. للإرسال الكامل، استخدم Mini App');
-        // حفظ الإيصال في localStorage كبديل
+        console.log('جاري إرسال صورة الإيصال...');
+        console.log('%c📸 محاولة إرسال الصورة', 'color: #40E0D0; font-weight: bold;');
         try {
-          localStorage.setItem('lastReceipt_' + Date.now(), uploadedReceipt);
-          console.log('تم حفظ الإيصال محلياً');
-        } catch(e) {
-          console.log('تعذر حفظ الإيصال');
+          await sendReceiptImage();
+        } catch(imgError) {
+          console.warn('⚠️ فشل إرسال الصورة:', imgError);
+          console.log('%c💡 نصيحة: لإرسال الصور بشكل مثالي:', 'color: orange; font-weight: bold;');
+          console.log('1. ارفع التطبيق على سيرفر (GitHub Pages / Netlify)');
+          console.log('2. اربطه بالبوت عبر @BotFather');
+          console.log('3. استخدمه كـ Telegram Mini App');
+          console.log('تم إرسال الطلب النصي بنجاح ✅');
         }
       }
       
@@ -1116,6 +1120,61 @@ ${selectedPay === 'bank' ? '\n📎 ملاحظة: يوجد إيصال مرفق (�
       toast('⚠️ تعذر الإرسال. راجع Console للحصول على البيانات');
       return false;
     }
+  }
+}
+
+// دالة إرسال صورة الإيصال
+async function sendReceiptImage(){
+  if(!uploadedReceipt) return;
+  
+  try {
+    // تحويل base64 إلى blob
+    const base64Data = uploadedReceipt.split(',')[1];
+    const mimeType = uploadedReceipt.split(',')[0].split(':')[1].split(';')[0];
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], {type: mimeType});
+    
+    // إرسال الصورة
+    const formData = new FormData();
+    formData.append('chat_id', APP_CONFIG.telegramAdminChatId);
+    formData.append('photo', blob, 'receipt.jpg');
+    formData.append('caption', '📎 صورة الإيصال البنكي');
+    
+    const photoUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendPhoto`;
+    
+    // محاولة إرسال الصورة مباشرة
+    try {
+      const corsProxy = 'https://corsproxy.io/?';
+      const photoResponse = await fetch(corsProxy + encodeURIComponent(photoUrl), {
+        method: 'POST',
+        body: formData
+      });
+      
+      const photoResult = await photoResponse.json();
+      if(photoResult && photoResult.ok){
+        console.log('✅ تم إرسال صورة الإيصال بنجاح');
+        return true;
+      }
+    } catch(e) {
+      console.warn('فشل إرسال الصورة عبر Proxy:', e);
+    }
+    
+    // حفظ محلي كبديل
+    console.log('⚠️ لإرسال الصور بشكل كامل، يُفضل استخدام Telegram Mini App');
+    try {
+      localStorage.setItem('receipt_' + Date.now(), uploadedReceipt);
+      console.log('تم حفظ الإيصال محلياً');
+    } catch(e) {}
+    
+    return false;
+  } catch(error) {
+    console.error('خطأ في إرسال الصورة:', error);
+    throw error;
   }
 }
 
@@ -1402,23 +1461,24 @@ function saveBankAccount(){
   
   closeBankModal();
   renderBankAccounts();
-  updateCheckoutBankInfo();
+  
+  // تحديث معلومات البنك في صفحة الدفع إذا كانت مفتوحة
+  if(document.getElementById('checkoutSheet').classList.contains('on')){
+    updateBankInfoInCheckout();
+  }
 }
 
 function deleteBankAccount(id){
   if(!confirm('هل تريد حذف هذا الحساب البنكي؟')) return;
   bankAccounts = bankAccounts.filter(a => a.id !== id);
   renderBankAccounts();
-  updateCheckoutBankInfo();
-  toast('🗑️ تم حذف الحساب البنكي');
-}
-
-function updateCheckoutBankInfo(){
-  // تحديث معلومات البنك في صفحة الدفع
-  const activeAccount = bankAccounts.find(a => a.active) || bankAccounts[0];
-  if(!activeAccount) return;
   
-  // سيتم تحديث هذا عند فتح صفحة الدفع
+  // تحديث معلومات البنك في صفحة الدفع إذا كانت مفتوحة
+  if(document.getElementById('checkoutSheet').classList.contains('on')){
+    updateBankInfoInCheckout();
+  }
+  
+  toast('🗑️ تم حذف الحساب البنكي');
 }
 
 // ============================================================
