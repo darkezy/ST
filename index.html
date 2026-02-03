@@ -438,7 +438,7 @@ body{min-height:100%;padding-top:var(--safe-top);}
       </div>
     </div>
 
-    <!-- Bank Details (hidden until bank selected) -->
+    <!-- Bank Accounts Selection & Details -->
     <div class="bank-box" id="bankBox">
       <!-- سيتم تحديث المحتوى ديناميكياً -->
     </div>
@@ -515,8 +515,8 @@ body{min-height:100%;padding-top:var(--safe-top);}
 // CONFIG & DATA
 // ============================================================
 const APP_CONFIG = {
-  telegramBotToken: '8251605027:AAE4V2kvdj3K4qiS_8D4KgMlR4U7wxQtioE', // ⚠️ ضع Bot Token هنا من @BotFather
-  telegramAdminChatId: '7380362549', // ⚠️ ضع Chat ID هنا من @userinfobot
+  telegramBotToken: 'YOUR_BOT_TOKEN_HERE', // ⚠️ ضع Bot Token هنا من @BotFather
+  telegramAdminChatId: 'YOUR_CHAT_ID_HERE', // ⚠️ ضع Chat ID هنا من @userinfobot
 };
 
 // تحذير إذا لم يتم إدخال الإعدادات
@@ -895,29 +895,76 @@ function openCheckout(){
 }
 
 function updateBankInfoInCheckout(){
-  const activeAccount = bankAccounts.find(a => a.active) || bankAccounts[0];
-  if(!activeAccount) return;
+  if(!bankAccounts.length) {
+    const bankBox = document.getElementById('bankBox');
+    bankBox.innerHTML = '<p style="text-align:center;color:var(--dim);padding:20px;">لا توجد حسابات بنكية. يرجى إضافة حساب من لوحة الإدارة.</p>';
+    return;
+  }
   
   // تحديث معلومات البنك في صفحة الدفع
   const bankBox = document.getElementById('bankBox');
-  const bankRowsHTML = `
-    <div class="bank-box-title">🏦 تفاصيل الحساب البنكي</div>
-    <div class="bank-row">
-      <span class="bank-l">اسم الحساب</span>
-      <span class="bank-v">${activeAccount.name} <button class="copy-btn" onclick="copyText('${activeAccount.name}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
+  
+  let bankOptionsHTML = '<div class="bank-box-title">🏦 اختر الحساب البنكي للتحويل</div>';
+  
+  // عرض جميع الحسابات كخيارات
+  bankAccounts.forEach((acc, index) => {
+    const isFirst = index === 0;
+    bankOptionsHTML += `
+      <div class="bank-account-option ${isFirst ? 'selected' : ''}" onclick="selectBankAccount(${acc.id})" id="bankAcc_${acc.id}" style="
+        background:var(--bg);
+        border:2px solid ${isFirst ? 'var(--accent)' : 'var(--border)'};
+        border-radius:10px;
+        padding:12px;
+        margin-bottom:10px;
+        cursor:pointer;
+        transition:all .2s;
+      ">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="
+            width:20px;
+            height:20px;
+            border-radius:50%;
+            border:2px solid ${isFirst ? 'var(--accent)' : 'var(--border)'};
+            background:${isFirst ? 'var(--accent)' : 'transparent'};
+            position:relative;
+            flex-shrink:0;
+          ">
+            ${isFirst ? '<div style="position:absolute;top:3px;left:3px;right:3px;bottom:3px;background:#fff;border-radius:50%;"></div>' : ''}
+          </div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);">${acc.name}</div>
+        </div>
+        <div style="padding-right:30px;">
+          <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">🏦 ${acc.bank}</div>
+          <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">💳 ${acc.accountNumber}</div>
+          ${acc.iban ? `<div style="font-size:11px;color:var(--dim);">📋 ${acc.iban}</div>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  // تفاصيل الحساب المختار
+  const firstAccount = bankAccounts[0];
+  bankOptionsHTML += `
+    <div id="selectedBankDetails" style="background:rgba(64,224,208,.07);border:1px solid rgba(64,224,208,.25);border-radius:10px;padding:14px;margin-top:12px;">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;">📋 تفاصيل الحساب المختار</div>
+      <div class="bank-row">
+        <span class="bank-l">اسم الحساب</span>
+        <span class="bank-v" id="detailName">${firstAccount.name} <button class="copy-btn" onclick="copyText('${firstAccount.name}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
+      </div>
+      <div class="bank-row">
+        <span class="bank-l">رقم الحساب</span>
+        <span class="bank-v" id="detailAccountNum">${firstAccount.accountNumber} <button class="copy-btn" onclick="copyText('${firstAccount.accountNumber.replace(/-/g, '')}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
+      </div>
+      <div class="bank-row">
+        <span class="bank-l">البنك</span>
+        <span class="bank-v" id="detailBank">${firstAccount.bank}</span>
+      </div>
+      ${firstAccount.iban ? `<div class="bank-row">
+        <span class="bank-l">الآيبان (IBAN)</span>
+        <span class="bank-v" id="detailIban">${firstAccount.iban} <button class="copy-btn" onclick="copyText('${firstAccount.iban}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
+      </div>` : ''}
     </div>
-    <div class="bank-row">
-      <span class="bank-l">رقم الحساب</span>
-      <span class="bank-v">${activeAccount.accountNumber} <button class="copy-btn" onclick="copyText('${activeAccount.accountNumber.replace(/-/g, '')}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
-    </div>
-    <div class="bank-row">
-      <span class="bank-l">البنك</span>
-      <span class="bank-v">${activeAccount.bank}</span>
-    </div>
-    ${activeAccount.iban ? `<div class="bank-row">
-      <span class="bank-l">الآيبان (IBAN)</span>
-      <span class="bank-v">${activeAccount.iban} <button class="copy-btn" onclick="copyText('${activeAccount.iban}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></span>
-    </div>` : ''}
+    
     <div style="margin-top:12px;">
       <div class="sec-t" style="font-size:12px;margin-bottom:6px;">📎 إرفاق صورة التحويل</div>
       <div class="upload-area" id="uploadArea" onclick="document.getElementById('uploadFile').click()">
@@ -930,7 +977,43 @@ function updateBankInfoInCheckout(){
     </div>
   `;
   
-  bankBox.innerHTML = bankRowsHTML;
+  bankBox.innerHTML = bankOptionsHTML;
+  
+  // حفظ الحساب المختار
+  window.selectedBankAccountId = firstAccount.id;
+}
+
+// دالة اختيار حساب بنكي
+function selectBankAccount(accountId){
+  const account = bankAccounts.find(a => a.id === accountId);
+  if(!account) return;
+  
+  // تحديث الحساب المختار
+  window.selectedBankAccountId = accountId;
+  
+  // تحديث الـ UI
+  document.querySelectorAll('.bank-account-option').forEach(opt => {
+    const isSelected = opt.id === 'bankAcc_' + accountId;
+    opt.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+    const radio = opt.querySelector('div > div');
+    if(radio) {
+      radio.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+      radio.style.background = isSelected ? 'var(--accent)' : 'transparent';
+      radio.innerHTML = isSelected ? '<div style="position:absolute;top:3px;left:3px;right:3px;bottom:3px;background:#fff;border-radius:50%;"></div>' : '';
+    }
+    if(isSelected) opt.classList.add('selected');
+    else opt.classList.remove('selected');
+  });
+  
+  // تحديث التفاصيل
+  document.getElementById('detailName').innerHTML = `${account.name} <button class="copy-btn" onclick="copyText('${account.name}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>`;
+  document.getElementById('detailAccountNum').innerHTML = `${account.accountNumber} <button class="copy-btn" onclick="copyText('${account.accountNumber.replace(/-/g, '')}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>`;
+  document.getElementById('detailBank').textContent = account.bank;
+  
+  const ibanRow = document.getElementById('detailIban');
+  if(account.iban && ibanRow) {
+    ibanRow.innerHTML = `${account.iban} <button class="copy-btn" onclick="copyText('${account.iban}')"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>`;
+  }
 }
 function closeCheckout(){
   document.getElementById('checkoutOverlay').classList.remove('on');
@@ -953,6 +1036,11 @@ function selectPay(type){
   document.getElementById('payCOD').classList.toggle('on',type==='cod');
   document.getElementById('payBank').classList.toggle('on',type==='bank');
   document.getElementById('bankBox').classList.toggle('show',type==='bank');
+  
+  // تحديث معلومات البنك عند اختيار الدفع البنكي
+  if(type === 'bank'){
+    updateBankInfoInCheckout();
+  }
 }
 function copyText(txt){
   navigator.clipboard.writeText(txt).then(()=>toast('📋 تم نسخ النص'));
@@ -1013,14 +1101,26 @@ async function sendToTelegram(name, phone, addr){
   const curr = getCurrencySymbol();
   const total = cart.reduce((s,c)=>s+(c.price*c.qty),0);
   
+  // الحصول على معلومات الحساب البنكي المختار
+  let bankInfo = '';
+  if(selectedPay === 'bank' && window.selectedBankAccountId){
+    const selectedBank = bankAccounts.find(a => a.id === window.selectedBankAccountId);
+    if(selectedBank){
+      bankInfo = `\n🏦 الحساب البنكي المختار:\n`;
+      bankInfo += `   • ${selectedBank.name}\n`;
+      bankInfo += `   • ${selectedBank.bank}\n`;
+      bankInfo += `   • ${selectedBank.accountNumber}\n`;
+    }
+  }
+  
   // إعداد رسالة الطلب
   let message = `🛍️ طلب جديد من المتجر\n\n`;
   message += `👤 العميل: ${name}\n`;
   message += `📞 الهاتف: ${phone}\n`;
   message += `📍 العنوان: ${addr}\n`;
   message += `💰 طريقة الدفع: ${selectedPay==='cod'?'الدفع عند الاستلام':'حوالة بنكية'}\n`;
-  message += `💵 العملة: ${CURRENCIES[currentCurrency].name}\n\n`;
-  message += `📦 المنتجات:\n`;
+  message += `💵 العملة: ${CURRENCIES[currentCurrency].name}${bankInfo}\n`;
+  message += `\n📦 المنتجات:\n`;
   
   cart.forEach((it,i)=>{
     message += `${i+1}. ${it.name}\n`;
@@ -1028,6 +1128,11 @@ async function sendToTelegram(name, phone, addr){
   });
   
   message += `\n💸 المجموع الكلي: ${total} ${curr}`;
+  
+  // إضافة معلومة عن الإيصال
+  if(selectedPay === 'bank' && uploadedReceipt){
+    message += `\n\n📎 العميل قام بإرفاق صورة الإيصال`;
+  }
   
   try {
     console.log('جاري إرسال الطلب...');
@@ -1134,56 +1239,115 @@ ${selectedPay === 'bank' ? '\n📎 ملاحظة: يوجد إيصال مرفق (�
 
 // دالة إرسال صورة الإيصال
 async function sendReceiptImage(){
-  if(!uploadedReceipt) return;
+  if(!uploadedReceipt) return false;
   
   try {
-    // تحويل base64 إلى blob
+    console.log('📸 جاري إرسال صورة الإيصال...');
+    
+    // استخراج base64 من data URL
     const base64Data = uploadedReceipt.split(',')[1];
-    const mimeType = uploadedReceipt.split(',')[0].split(':')[1].split(';')[0];
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], {type: mimeType});
     
-    // إرسال الصورة
-    const formData = new FormData();
-    formData.append('chat_id', APP_CONFIG.telegramAdminChatId);
-    formData.append('photo', blob, 'receipt.jpg');
-    formData.append('caption', '📎 صورة الإيصال البنكي');
-    
-    const photoUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendPhoto`;
-    
-    // محاولة إرسال الصورة مباشرة
+    // طريقة 1: رفع الصورة على خدمة خارجية ثم إرسال الرابط
     try {
-      const corsProxy = 'https://corsproxy.io/?';
-      const photoResponse = await fetch(corsProxy + encodeURIComponent(photoUrl), {
+      // استخدام imgbb API المجاني (لا يحتاج API key للاستخدام البسيط)
+      const formData = new FormData();
+      formData.append('image', base64Data);
+      
+      const uploadResponse = await fetch('https://api.imgbb.com/1/upload?key=d3622bcd63c2f5adc94ec009cf253bf5', {
         method: 'POST',
         body: formData
       });
       
-      const photoResult = await photoResponse.json();
-      if(photoResult && photoResult.ok){
-        console.log('✅ تم إرسال صورة الإيصال بنجاح');
-        return true;
+      if(uploadResponse.ok){
+        const uploadResult = await uploadResponse.json();
+        if(uploadResult.success && uploadResult.data && uploadResult.data.url){
+          const imageUrl = uploadResult.data.url;
+          console.log('✅ تم رفع الصورة بنجاح:', imageUrl);
+          
+          // إرسال رسالة مع رابط الصورة
+          const messageUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
+          const proxyUrl = 'https://api.allorigins.win/get?url=';
+          
+          const params = new URLSearchParams({
+            chat_id: APP_CONFIG.telegramAdminChatId,
+            text: `📎 صورة الإيصال البنكي:\n${imageUrl}`,
+            parse_mode: 'HTML'
+          });
+          
+          const fullUrl = proxyUrl + encodeURIComponent(messageUrl + '?' + params.toString());
+          await fetch(fullUrl);
+          
+          console.log('✅ تم إرسال رابط الصورة للأدمن');
+          toast('✅ تم إرسال الطلب مع صورة الإيصال');
+          return true;
+        }
       }
-    } catch(e) {
-      console.warn('فشل إرسال الصورة عبر Proxy:', e);
+    } catch(uploadError) {
+      console.log('فشل رفع الصورة على imgbb، جاري المحاولة بطريقة مباشرة...');
     }
     
-    // حفظ محلي كبديل
-    console.log('⚠️ لإرسال الصور بشكل كامل، يُفضل استخدام Telegram Mini App');
+    // طريقة 2: محاولة الإرسال المباشر
+    try {
+      const mimeType = uploadedReceipt.split(',')[0].split(':')[1].split(';')[0];
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], {type: mimeType});
+      
+      const formData = new FormData();
+      formData.append('chat_id', APP_CONFIG.telegramAdminChatId);
+      formData.append('photo', blob, 'receipt.jpg');
+      formData.append('caption', '📎 صورة الإيصال البنكي');
+      
+      const photoUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendPhoto`;
+      
+      // محاولة مباشرة
+      const directResponse = await fetch(photoUrl, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if(directResponse.ok) {
+        const result = await directResponse.json();
+        if(result.ok) {
+          console.log('✅ تم إرسال الصورة مباشرة بنجاح');
+          toast('✅ تم إرسال الطلب مع صورة الإيصال');
+          return true;
+        }
+      }
+    } catch(directError) {
+      console.log('فشل الإرسال المباشر');
+    }
+    
+    // طريقة 3: إرسال إشعار فقط
+    const messageUrl = `https://api.telegram.org/bot${APP_CONFIG.telegramBotToken}/sendMessage`;
+    const proxyUrl = 'https://api.allorigins.win/get?url=';
+    
+    const alertParams = new URLSearchParams({
+      chat_id: APP_CONFIG.telegramAdminChatId,
+      text: `⚠️ تنبيه: العميل قام بإرفاق صورة إيصال لكن تعذر إرسالها تلقائياً.\n\n💡 يرجى طلب الصورة من العميل مباشرة عبر الهاتف المذكور في الطلب.`,
+      parse_mode: 'HTML'
+    });
+    
+    const fullAlertUrl = proxyUrl + encodeURIComponent(messageUrl + '?' + alertParams.toString());
+    await fetch(fullAlertUrl);
+    
+    console.log('⚠️ تم إرسال إشعار للأدمن عن وجود صورة');
+    
+    // حفظ محلي
     try {
       localStorage.setItem('receipt_' + Date.now(), uploadedReceipt);
-      console.log('تم حفظ الإيصال محلياً');
+      console.log('💾 تم حفظ الصورة محلياً في المتصفح');
     } catch(e) {}
     
     return false;
+    
   } catch(error) {
-    console.error('خطأ في إرسال الصورة:', error);
-    throw error;
+    console.error('خطأ في معالجة الصورة:', error);
+    return false;
   }
 }
 
