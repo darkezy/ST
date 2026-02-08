@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <meta name="theme-color" content="#0f0f1a"/>
 <title>متجر أيون</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
 
@@ -518,11 +523,169 @@ body{min-height:100%;padding-top:var(--safe-top);}
 
 <script>
 // ============================================================
+// FIREBASE CONFIGURATION
+// ============================================================
+
+// إعدادات Firebase (استبدلها بإعداداتك من Firebase Console)
+const firebaseConfig = {
+  apiKey: "AIzaSyBNQB0tJh6DPJATiFtAmvq3FeW6yseHHLY",
+  authDomain: "hibo-store.firebaseapp.com",
+  databaseURL: "https://hibo-store-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "hibo-store",
+  storageBucket: "hibo-store.firebasestorage.app",
+  messagingSenderId: "924058896911",
+  appId: "1:924058896911:web:cc0698813979a9d14d717a"
+};
+
+
+let firebaseInitialized = false;
+let database = null;
+
+// تهيئة Firebase
+function initFirebase(){
+  try {
+    if(typeof firebase === 'undefined') {
+      console.warn('⚠️ Firebase غير متوفر. سيتم استخدام LocalStorage');
+      return false;
+    }
+    
+    // التحقق من الإعدادات
+    if(FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY') {
+      console.warn('⚠️ لم يتم إعداد Firebase. سيتم استخدام LocalStorage');
+      console.log('%c📖 لإعداد Firebase:', 'color: #FFD700; font-weight: bold;');
+      console.log('1. اذهب إلى https://console.firebase.google.com');
+      console.log('2. أنشئ مشروع جديد');
+      console.log('3. فعّل Realtime Database');
+      console.log('4. انسخ الإعدادات وضعها في السطر 512');
+      return false;
+    }
+    
+    firebase.initializeApp(FIREBASE_CONFIG);
+    database = firebase.database();
+    firebaseInitialized = true;
+    
+    console.log('✅ تم الاتصال بـ Firebase بنجاح');
+    
+    // الاستماع للتحديثات في الوقت الفعلي
+    listenToFirebaseUpdates();
+    
+    return true;
+  } catch(error) {
+    console.error('خطأ في تهيئة Firebase:', error);
+    console.warn('سيتم استخدام LocalStorage كبديل');
+    return false;
+  }
+}
+
+// الاستماع للتحديثات
+function listenToFirebaseUpdates(){
+  if(!firebaseInitialized) return;
+  
+  // الاستماع للمنتجات
+  database.ref('products').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if(data && Array.isArray(data) && data.length > 0) {
+      products = data;
+      renderProducts(getFilteredProducts());
+      renderCats();
+      console.log('🔄 تم تحديث المنتجات من Firebase');
+    }
+  });
+  
+  // الاستماع للحسابات البنكية
+  database.ref('bankAccounts').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if(data && Array.isArray(data) && data.length > 0) {
+      bankAccounts = data;
+      console.log('🔄 تم تحديث الحسابات البنكية من Firebase');
+    }
+  });
+  
+  // الاستماع للعملة
+  database.ref('currentCurrency').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if(data) {
+      currentCurrency = data;
+      console.log('🔄 تم تحديث العملة من Firebase');
+    }
+  });
+}
+
+// حفظ البيانات إلى Firebase
+async function saveToFirebase(){
+  if(!firebaseInitialized) {
+    // استخدام LocalStorage كبديل
+    saveToLocalStorage();
+    return;
+  }
+  
+  try {
+    const updates = {
+      products: products,
+      bankAccounts: bankAccounts,
+      currentCurrency: currentCurrency,
+      nextId: nextId,
+      nextBankId: nextBankId,
+      lastUpdated: Date.now()
+    };
+    
+    await database.ref().update(updates);
+    
+    console.log('☁️ تم حفظ البيانات في Firebase');
+    toast('☁️ تم الحفظ في السحابة');
+  } catch(error) {
+    console.error('خطأ في الحفظ إلى Firebase:', error);
+    // استخدام LocalStorage كبديل
+    saveToLocalStorage();
+  }
+}
+
+// تحميل البيانات من Firebase
+async function loadFromFirebase(){
+  if(!firebaseInitialized) {
+    // استخدام LocalStorage كبديل
+    return loadFromLocalStorage();
+  }
+  
+  try {
+    const snapshot = await database.ref().once('value');
+    const data = snapshot.val();
+    
+    if(data) {
+      if(data.products && data.products.length > 0) {
+        products = data.products;
+        nextId = data.nextId || products.length + 1;
+      }
+      
+      if(data.bankAccounts && data.bankAccounts.length > 0) {
+        bankAccounts = data.bankAccounts;
+        nextBankId = data.nextBankId || bankAccounts.length + 1;
+      }
+      
+      if(data.currentCurrency) {
+        currentCurrency = data.currentCurrency;
+      }
+      
+      console.log('✅ تم تحميل البيانات من Firebase');
+      console.log(`📦 المنتجات: ${products.length}`);
+      console.log(`🏦 الحسابات البنكية: ${bankAccounts.length}`);
+      return true;
+    }
+  } catch(error) {
+    console.error('خطأ في التحميل من Firebase:', error);
+    // استخدام LocalStorage كبديل
+    return loadFromLocalStorage();
+  }
+  
+  return false;
+}
+
+// ============================================================
 // CONFIG & DATA
 // ============================================================
 const APP_CONFIG = {
-  telegramBotToken: '8251605027:AAE4V2kvdj3K4qiS_8D4KgMlR4U7wxQtioE', // ⚠️ ضع Bot Token هنا من @BotFather
-  telegramAdminChatId: '7380362549', // ⚠️ ضع Chat ID هنا من @userinfobot
+  telegramBotToken: 'YOUR_BOT_TOKEN_HERE', // ⚠️ ضع Bot Token هنا من @BotFather
+  telegramAdminChatId: 'YOUR_CHAT_ID_HERE', // ⚠️ ضع Chat ID هنا من @userinfobot
 };
 
 // تحذير إذا لم يتم إدخال الإعدادات
@@ -667,8 +830,8 @@ function changeCurrency(curr){
     opt.classList.toggle('active', currencies[i]===curr);
   });
   
-  // حفظ تلقائي
-  saveToLocalStorage();
+  // حفظ في Firebase (أو LocalStorage كبديل)
+  saveToFirebase();
   
   // Re-render everything to show new currency
   renderProducts(getFilteredProducts());
@@ -687,8 +850,15 @@ function changeCurrency(curr){
 // INIT
 // ============================================================
 function init(){
+  // تهيئة Firebase
+  initFirebase();
+  
   // تحميل البيانات المحفوظة
-  loadFromLocalStorage();
+  if(firebaseInitialized) {
+    loadFromFirebase();
+  } else {
+    loadFromLocalStorage();
+  }
   
   renderCats();
   renderProducts(products);
@@ -698,6 +868,7 @@ function init(){
   console.log(`المنتجات: ${products.length}`);
   console.log(`الحسابات البنكية: ${bankAccounts.length}`);
   console.log(`العملة الحالية: ${CURRENCIES[currentCurrency].name}`);
+  console.log(`قاعدة البيانات: ${firebaseInitialized ? '☁️ Firebase' : '💾 LocalStorage'}`);
 }
 
 // ============================================================
@@ -1634,8 +1805,8 @@ function saveProduct(){
     toast('✅ تم إضافة المنتج الجديد');
   }
   
-  // حفظ تلقائي
-  saveToLocalStorage();
+  // حفظ في Firebase (أو LocalStorage كبديل)
+  saveToFirebase();
   
   closeProdModal();
   renderAdmin();
@@ -1649,8 +1820,8 @@ function deleteProduct(id){
   cart=cart.filter(c=>c.id!==id);
   updateBadge();
   
-  // حفظ تلقائي
-  saveToLocalStorage();
+  // حفظ في Firebase (أو LocalStorage كبديل)
+  saveToFirebase();
   renderAdmin();
   renderCats();
   renderProducts(getFilteredProducts());
@@ -1752,8 +1923,8 @@ function saveBankAccount(){
     toast('✅ تم إضافة حساب بنكي جديد');
   }
   
-  // حفظ تلقائي
-  saveToLocalStorage();
+  // حفظ في Firebase (أو LocalStorage كبديل)
+  saveToFirebase();
   
   closeBankModal();
   renderBankAccounts();
@@ -1769,8 +1940,8 @@ function deleteBankAccount(id){
   bankAccounts = bankAccounts.filter(a => a.id !== id);
   renderBankAccounts();
   
-  // حفظ تلقائي
-  saveToLocalStorage();
+  // حفظ في Firebase (أو LocalStorage كبديل)
+  saveToFirebase();
   
   // تحديث معلومات البنك في صفحة الدفع إذا كانت مفتوحة
   if(document.getElementById('checkoutSheet').classList.contains('on')){
