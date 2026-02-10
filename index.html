@@ -524,7 +524,7 @@ body{min-height:100%;padding-top:var(--safe-top);}
 // إعدادات GitHub Gist
 const GIST_CONFIG = {
   // ضع Personal Access Token من GitHub هنا
-  token: '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',
+  token: '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',
   // ضع معرف الـ Gist هنا (سيتم إنشاؤه تلقائياً)
   gistId: 'd28317d6cc3fc1f9f92be065705d5f20'
 };
@@ -796,17 +796,55 @@ let nextBankId = 2;
 // حفظ البيانات
 function saveToLocalStorage(){
   try {
+    // إزالة الصور من البيانات قبل الحفظ (لتوفير المساحة)
+    const productsWithoutImages = products.map(p => ({
+      ...p,
+      imgs: [] // حذف الصور المؤقت للحفظ
+    }));
+    
     const data = {
-      products: products,
+      products: productsWithoutImages, // بدون صور
       bankAccounts: bankAccounts,
       nextId: nextId,
       nextBankId: nextBankId,
       currentCurrency: currentCurrency
     };
+    
     localStorage.setItem('ayonStore_data', JSON.stringify(data));
     console.log('💾 تم حفظ البيانات تلقائياً');
   } catch(e) {
     console.error('خطأ في الحفظ:', e);
+    
+    // إذا فشل الحفظ بسبب الحجم، احذف البيانات القديمة
+    if(e.name === 'QuotaExceededError') {
+      console.warn('⚠️ LocalStorage ممتلئ! جاري المسح...');
+      try {
+        localStorage.removeItem('ayonStore_data');
+        // حاول مرة أخرى بدون الصور
+        const minimalData = {
+          products: products.map(p => ({
+            id: p.id,
+            name: p.name,
+            cat: p.cat,
+            icon: p.icon,
+            price: p.price,
+            oldPrice: p.oldPrice,
+            rating: p.rating,
+            reviews: p.reviews,
+            desc: p.desc,
+            imgs: [] // بدون صور نهائياً
+          })),
+          bankAccounts: bankAccounts,
+          nextId: nextId,
+          nextBankId: nextBankId,
+          currentCurrency: currentCurrency
+        };
+        localStorage.setItem('ayonStore_data', JSON.stringify(minimalData));
+        console.log('✅ تم الحفظ بدون الصور');
+      } catch(e2) {
+        console.error('❌ فشل الحفظ تماماً:', e2);
+      }
+    }
   }
 }
 
@@ -840,9 +878,19 @@ function loadFromLocalStorage(){
 
 // مسح البيانات (للإدارة)
 function clearLocalStorage(){
-  if(confirm('هل تريد حذف جميع البيانات المحفوظة؟ لا يمكن التراجع!')){
-    localStorage.removeItem('ayonStore_data');
-    location.reload();
+  if(confirm('هل تريد مسح جميع البيانات المحلية المحفوظة؟\n\n⚠️ ملاحظة: بيانات Gist في السحابة لن تُحذف')){
+    try {
+      localStorage.removeItem('ayonStore_data');
+      console.log('✅ تم مسح LocalStorage');
+      toast('✅ تم مسح البيانات المحلية');
+      
+      // إعادة تحميل من Gist
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    } catch(e) {
+      console.error('خطأ في المسح:', e);
+    }
   }
 }
 
