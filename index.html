@@ -516,6 +516,9 @@ body{min-height:100%;padding-top:var(--safe-top);}
 
 <div class="toast" id="toast"></div>
 
+<!-- تحميل الإعدادات السرية من ملف خارجي (إن وُجد) -->
+<script src="config.js"></script>
+
 <script>
 // ============================================================
 // GITHUB GIST STORAGE (بديل بسيط لـ Firebase)
@@ -524,9 +527,9 @@ body{min-height:100%;padding-top:var(--safe-top);}
 // إعدادات GitHub Gist
 const GIST_CONFIG = {
   // ضع Personal Access Token من GitHub هنا
-  token: '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',
+  token: 'YOUR_GITHUB_TOKEN',
   // ضع معرف الـ Gist هنا (سيتم إنشاؤه تلقائياً)
-  gistId: 'd28317d6cc3fc1f9f92be065705d5f20'
+  gistId: 'YOUR_GIST_ID'
 };
 
 let gistEnabled = false;
@@ -759,18 +762,28 @@ async function refreshFromCloud(){
 // CONFIG & DATA
 // ============================================================
 
+// 🔒 المفاتيح السرية - يتم تحميلها من config.js (إن وُجد)
 const APP_CONFIG = {
-  telegramBotToken: '8251605027:AAE4V2kvdj3K4qiS_8D4KgMlR4U7wxQtioE', // ⚠️ ضع Bot Token هنا من @BotFather
-  telegramAdminChatId: '7380362549', // ⚠️ ضع Chat ID هنا من @userinfobot
+  telegramBotToken: window.TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE',
+  telegramAdminChatId: window.TELEGRAM_CHAT_ID || 'YOUR_CHAT_ID_HERE',
 };
+
+// تحديث GIST_CONFIG ليستخدم المتغيرات الخارجية
+if(typeof window.GIST_TOKEN !== 'undefined' && GIST_CONFIG.token === 'YOUR_GITHUB_TOKEN'){
+  GIST_CONFIG.token = window.GIST_TOKEN;
+}
+if(typeof window.GIST_ID !== 'undefined' && GIST_CONFIG.gistId === 'YOUR_GIST_ID'){
+  GIST_CONFIG.gistId = window.GIST_ID;
+}
 
 // تحذير إذا لم يتم إدخال الإعدادات
 if(APP_CONFIG.telegramBotToken === 'YOUR_BOT_TOKEN_HERE' || APP_CONFIG.telegramAdminChatId === 'YOUR_CHAT_ID_HERE'){
   console.warn('%c⚠️ تحذير: لم يتم إعداد Bot Token و Chat ID', 'color: orange; font-size: 16px; font-weight: bold;');
   console.log('%cالتطبيق سيعمل، لكن الطلبات لن تُرسل إلى التليجرام', 'color: yellow;');
-  console.log('%cللإعداد:', 'color: #40E0D0; font-weight: bold;');
-  console.log('1. السطر 735: Bot Token من @BotFather');
-  console.log('2. السطر 736: Chat ID من @userinfobot');
+  console.log('%c💡 للإعداد:', 'color: #40E0D0; font-weight: bold;');
+  console.log('1. أنشئ ملف config.js');
+  console.log('2. ضع فيه المفاتيح (راجع README_SECURITY.md)');
+  console.log('3. لا ترفع config.js على GitHub!');
 }
 
 // العملات المتاحة
