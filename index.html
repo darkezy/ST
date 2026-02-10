@@ -524,7 +524,7 @@ body{min-height:100%;padding-top:var(--safe-top);}
 // إعدادات GitHub Gist
 const GIST_CONFIG = {
   // ضع Personal Access Token من GitHub هنا
-  token: 'YOUR_GITHUB_TOKEN',
+  token: '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',
   // ضع معرف الـ Gist هنا (سيتم إنشاؤه تلقائياً)
   gistId: 'YOUR_GIST_ID'
 };
@@ -700,40 +700,9 @@ async function loadFromGist(){
 // CONFIG & DATA
 // ============================================================
 
-// 🔒 الطريقة الآمنة: استخدم ملف config.js منفصل (غير مرفوع على GitHub)
-// أو استخدم GitHub Secrets + Actions لبناء الملف
-
-// للاستخدام المحلي/التطوير:
 const APP_CONFIG = {
-  telegramBotToken: typeof window.TELEGRAM_BOT_TOKEN !== 'undefined' 
-    ? window.TELEGRAM_BOT_TOKEN 
-    : 'YOUR_BOT_TOKEN_HERE', 
-  telegramAdminChatId: typeof window.TELEGRAM_CHAT_ID !== 'undefined'
-    ? window.TELEGRAM_CHAT_ID
-    : 'YOUR_CHAT_ID_HERE',
-};
-
-// إعدادات GitHub Gist
-const GIST_CONFIG = {
-  token: typeof window.GIST_TOKEN !== 'undefined'
-    ? window.GIST_TOKEN
-    : 'YOUR_GITHUB_TOKEN',
-  gistId: typeof window.GIST_ID !== 'undefined'
-    ? window.GIST_ID
-    : 'YOUR_GIST_ID'
-};
-
-// 💡 نصيحة: أنشئ ملف config.js وضع فيه:
-// window.TELEGRAM_BOT_TOKEN = "7899559183:AAH...";
-// window.TELEGRAM_CHAT_ID = "7604086422";
-// window.GIST_TOKEN = "ghp_xxx...";
-// window.GIST_ID = "abc123xyz";
-// ثم أضف <script src="config.js"></script> قبل هذا الملف
-// ولا ترفع config.js على GitHub!
-
-const APP_CONFIG = {
-  telegramBotToken: 'YOUR_BOT_TOKEN_HERE', // ⚠️ ضع Bot Token هنا من @BotFather
-  telegramAdminChatId: 'YOUR_CHAT_ID_HERE', // ⚠️ ضع Chat ID هنا من @userinfobot
+  telegramBotToken: '8251605027:AAE4V2kvdj3K4qiS_8D4KgMlR4U7wxQtioE', // ⚠️ ضع Bot Token هنا من @BotFather
+  telegramAdminChatId: '7380362549', // ⚠️ ضع Chat ID هنا من @userinfobot
 };
 
 // تحذير إذا لم يتم إدخال الإعدادات
@@ -741,8 +710,8 @@ if(APP_CONFIG.telegramBotToken === 'YOUR_BOT_TOKEN_HERE' || APP_CONFIG.telegramA
   console.warn('%c⚠️ تحذير: لم يتم إعداد Bot Token و Chat ID', 'color: orange; font-size: 16px; font-weight: bold;');
   console.log('%cالتطبيق سيعمل، لكن الطلبات لن تُرسل إلى التليجرام', 'color: yellow;');
   console.log('%cللإعداد:', 'color: #40E0D0; font-weight: bold;');
-  console.log('1. السطر 513: Bot Token من @BotFather');
-  console.log('2. السطر 514: Chat ID من @userinfobot');
+  console.log('1. السطر 735: Bot Token من @BotFather');
+  console.log('2. السطر 736: Chat ID من @userinfobot');
 }
 
 // العملات المتاحة
