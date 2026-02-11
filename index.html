@@ -516,9 +516,6 @@ body{min-height:100%;padding-top:var(--safe-top);}
 
 <div class="toast" id="toast"></div>
 
-<!-- تحميل الإعدادات السرية من ملف خارجي (إن وُجد) -->
-<script src="config.js"></script>
-
 <script>
 // ============================================================
 // CLOUDFLARE WORKER BACKEND
@@ -2130,7 +2127,11 @@ async function testTelegram(){
 })();
 
 // ============================================================
-init();
+// START APP
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  init();
+});
 
 // رسالة تعليمية للمطور
 console.log('%c📱 متجر أيون - Telegram Mini App', 'color: #40E0D0; font-size: 18px; font-weight: bold;');
