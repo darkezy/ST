@@ -1475,11 +1475,32 @@ async function confirmOrder(){
     return;
   }
   
-// إرسال الطلب إلى التليجرام
+  // إرسال البيانات إلى التليجرام
+  await sendToTelegram(name, phone, addr);
+  
+  // Show success
+  closeCheckout();
+  document.getElementById('successScreen').classList.add('on');
+  
+  // Clear cart
+  cart=[];
+  updateBadge();
+  
+  // Clear form
+  document.getElementById('inpName').value='';
+  document.getElementById('inpPhone').value='';
+  document.getElementById('inpAddr').value='';
+  uploadedReceipt = null;
+  document.getElementById('uploadArea').classList.remove('has-file');
+  document.querySelector('#uploadArea p').textContent='اضغط لإرفاق الصورة';
+  document.getElementById('fileName').textContent='−';
+  document.getElementById('uploadFile').value='';
+}
+
 async function sendToTelegram(name, phone, addr){
   const curr = getCurrencySymbol();
   const total = cart.reduce((s,c)=>s+(c.price*c.qty),0);
-
+  
   // تجهيز بيانات الطلب
   const orderData = {
     name: name,
@@ -1496,7 +1517,7 @@ async function sendToTelegram(name, phone, addr){
     total: `${total} ${curr}`,
     hasReceipt: selectedPay === 'bank' && uploadedReceipt !== null
   };
-
+  
   // إضافة معلومات البنك إذا كان الدفع بنكي
   if(selectedPay === 'bank' && window.selectedBankAccountId){
     const selectedBank = bankAccounts.find(a => a.id === window.selectedBankAccountId);
@@ -1508,10 +1529,10 @@ async function sendToTelegram(name, phone, addr){
       };
     }
   }
-
+  
   try {
     console.log('📤 جاري إرسال الطلب عبر Cloudflare Worker...');
-
+    
     const response = await fetch(`${API_URL}/api/send-order`, {
       method: 'POST',
       headers: {
@@ -1519,24 +1540,24 @@ async function sendToTelegram(name, phone, addr){
       },
       body: JSON.stringify(orderData)
     });
-
+    
     if(!response.ok){
       throw new Error(`HTTP ${response.status}`);
     }
-
+    
     const result = await response.json();
-
+    
     if(!result.success){
       throw new Error(result.error || 'Failed to send');
     }
-
+    
     console.log('✅ تم إرسال الطلب بنجاح');
     return true;
-
+    
   } catch(error) {
     console.error('❌ خطأ في إرسال الطلب:', error);
-
-    // تجهيز رسالة بديلة للنسخ اليدوي
+    
+    // في حالة الفشل، عرض البيانات للنسخ اليدوي
     const message = `🛍️ طلب جديد\n\n` +
       `👤 ${name}\n` +
       `📞 ${phone}\n` +
@@ -1547,21 +1568,40 @@ async function sendToTelegram(name, phone, addr){
         `${i + 1}. ${item.name} - ${item.qty}×${item.price}\n`
       ).join('') +
       `\n💸 المجموع: ${orderData.total}`;
-
-    // محاولة نسخ البيانات للحافظة
+    
     try {
       await navigator.clipboard.writeText(message);
       toast('📋 تم نسخ الطلب - أرسله يدوياً للأدمن');
       console.log('📋 الطلب:', message);
     } catch(e) {
-      toast('⚠️ فشل النسخ - راجع Console');
+      toast('⚠️ فشل الإرسال - راجع Console');
       console.log('📋 الطلب:', message);
     }
-
+    
     return false;
   }
 }
-
+    
+    // رسالة بديلة: نسخ البيانات للحافظة
+    const orderData = `
+${message}
+${selectedPay === 'bank' ? '\n📎 ملاحظة: يوجد إيصال مرفق (يمكن حفظه من المتصفح)' : ''}
+    `.trim();
+    
+    try {
+      await navigator.clipboard.writeText(orderData);
+      toast('📋 تم نسخ بيانات الطلب. أرسلها للأدمن يدوياً');
+      console.log('%cتم نسخ البيانات للحافظة', 'color: orange; font-weight: bold;');
+      console.log(orderData);
+      return false;
+    } catch(e) {
+      console.log('%cبيانات الطلب:', 'color: orange; font-weight: bold;');
+      console.log(orderData);
+      toast('⚠️ تعذر الإرسال. راجع Console للحصول على البيانات');
+      return false;
+    }
+  }
+}
 
 // دالة إرسال صورة الإيصال
 async function sendReceiptImage(){
