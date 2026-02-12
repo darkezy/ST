@@ -627,11 +627,6 @@ async function loadFromGist(){
 
 // دالة تحديث البيانات من السحابة (للعملاء)
 async function refreshFromCloud(){
-  if(!gistEnabled && GIST_CONFIG.gistId === 'YOUR_GIST_ID'){
-    toast('⚠️ لم يتم إعداد المزامنة السحابية');
-    return;
-  }
-  
   toast('🔄 جاري التحديث من السحابة...');
   
   const success = await loadFromGist();
@@ -663,23 +658,8 @@ const APP_CONFIG = {
   telegramAdminChatId: window.TELEGRAM_CHAT_ID || 'YOUR_CHAT_ID_HERE',
 };
 
-// تحديث GIST_CONFIG ليستخدم المتغيرات الخارجية
-if(typeof window.GIST_TOKEN !== 'undefined' && GIST_CONFIG.token === 'YOUR_GITHUB_TOKEN'){
-  GIST_CONFIG.token = window.GIST_TOKEN;
-}
-if(typeof window.GIST_ID !== 'undefined' && GIST_CONFIG.gistId === 'YOUR_GIST_ID'){
-  GIST_CONFIG.gistId = window.GIST_ID;
-}
-
-// تحذير إذا لم يتم إدخال الإعدادات
-if(APP_CONFIG.telegramBotToken === 'YOUR_BOT_TOKEN_HERE' || APP_CONFIG.telegramAdminChatId === 'YOUR_CHAT_ID_HERE'){
-  console.warn('%c⚠️ تحذير: لم يتم إعداد Bot Token و Chat ID', 'color: orange; font-size: 16px; font-weight: bold;');
-  console.log('%cالتطبيق سيعمل، لكن الطلبات لن تُرسل إلى التليجرام', 'color: yellow;');
-  console.log('%c💡 للإعداد:', 'color: #40E0D0; font-weight: bold;');
-  console.log('1. أنشئ ملف config.js');
-  console.log('2. ضع فيه المفاتيح (راجع README_SECURITY.md)');
-  console.log('3. لا ترفع config.js على GitHub!');
-}
+// ⚠️ ملاحظة: جميع المفاتيح الآن في Cloudflare Worker (آمنة 100%)
+// لا حاجة لـ Bot Token أو Gist Token في Frontend!
 
 // العملات المتاحة
 const CURRENCIES = {
@@ -893,28 +873,27 @@ async function init(){
   console.log(`المنتجات: ${products.length}`);
   console.log(`الحسابات البنكية: ${bankAccounts.length}`);
   console.log(`العملة الحالية: ${CURRENCIES[currentCurrency].name}`);
-  console.log(`قاعدة البيانات: ${gistEnabled ? '☁️ GitHub Gist' : '💾 LocalStorage'}`);
+  console.log(`قاعدة البيانات: ☁️ Cloudflare Worker`);
+  console.log(`API: ${API_URL}`);
   
-  // إضافة تحديث تلقائي كل 5 دقائق (للعملاء فقط)
-  if(gistEnabled && GIST_CONFIG.gistId !== 'YOUR_GIST_ID'){
-    setInterval(async () => {
-      console.log('🔄 تحديث تلقائي من السحابة...');
-      const oldCount = products.length;
-      await loadFromGist();
-      const newCount = products.length;
-      
-      if(newCount !== oldCount){
-        console.log('✨ تم اكتشاف تحديثات جديدة!');
-        renderCats();
-        renderProducts(getFilteredProducts());
-        
-        // إظهار إشعار للمستخدم
-        toast('✨ تم تحديث المنتجات تلقائياً');
-      }
-    }, 5 * 60 * 1000); // كل 5 دقائق
+  // إضافة تحديث تلقائي كل 5 دقائق
+  setInterval(async () => {
+    console.log('🔄 تحديث تلقائي من السحابة...');
+    const oldCount = products.length;
+    await loadFromGist();
+    const newCount = products.length;
     
-    console.log('🔄 التحديث التلقائي مفعّل (كل 5 دقائق)');
-  }
+    if(newCount !== oldCount){
+      console.log('✨ تم اكتشاف تحديثات جديدة!');
+      renderCats();
+      renderProducts(getFilteredProducts());
+      
+      // إظهار إشعار للمستخدم
+      toast('✨ تم تحديث المنتجات تلقائياً');
+    }
+  }, 5 * 60 * 1000); // كل 5 دقائق
+  
+  console.log('🔄 التحديث التلقائي مفعّل (كل 5 دقائق)');
 }
 
 // ============================================================
