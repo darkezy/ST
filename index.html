@@ -1581,27 +1581,6 @@ async function sendToTelegram(name, phone, addr){
     return false;
   }
 }
-    
-    // رسالة بديلة: نسخ البيانات للحافظة
-    const orderData = `
-${message}
-${selectedPay === 'bank' ? '\n📎 ملاحظة: يوجد إيصال مرفق (يمكن حفظه من المتصفح)' : ''}
-    `.trim();
-    
-    try {
-      await navigator.clipboard.writeText(orderData);
-      toast('📋 تم نسخ بيانات الطلب. أرسلها للأدمن يدوياً');
-      console.log('%cتم نسخ البيانات للحافظة', 'color: orange; font-weight: bold;');
-      console.log(orderData);
-      return false;
-    } catch(e) {
-      console.log('%cبيانات الطلب:', 'color: orange; font-weight: bold;');
-      console.log(orderData);
-      toast('⚠️ تعذر الإرسال. راجع Console للحصول على البيانات');
-      return false;
-    }
-  }
-}
 
 // دالة إرسال صورة الإيصال
 async function sendReceiptImage(){
